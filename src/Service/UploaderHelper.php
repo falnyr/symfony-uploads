@@ -113,4 +113,20 @@ class UploaderHelper
         return $newFilename;
     }
 
+    /**
+     * @return resource
+     */
+    public function readStream(string $path, bool $isPublic)
+    {
+        $filesystem = $isPublic ? $this->publicFilesystem : $this->privateFilesystem;
+
+        $resource = $filesystem->readStream($path);
+
+        if ($resource === false) {
+            throw new \Exception(sprinf('Error opening stream for "%s', $path));
+        }
+
+        return $resource;
+    }
+
 }
