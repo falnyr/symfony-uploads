@@ -8,7 +8,9 @@ use App\Service\UploaderHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints\File;
 use Symfony\Component\Validator\Constraints\NotBlank;
@@ -43,7 +45,8 @@ class ArticleReferenceAdminController extends BaseController
                         'image/*',
                         'application/pdf',
                         'application/msword',
-                        'text/plain'
+                        'text/plain',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                     ]
                 ])
             ]
@@ -81,6 +84,21 @@ class ArticleReferenceAdminController extends BaseController
     {
         $article = $reference->getArticle();
         $this->denyAccessUnlessGranted('MANAGE', $article);
-        dd($reference);
+
+        $response = new StreamedResponse(function () use($reference, $uploaderHelper) {
+            $outputStream = fopen('php://output', 'wb');
+            $fileStream = $uploaderHelper->readStream($reference->getFilePath(), false);
+
+            stream_copy_to_stream($fileStream, $outputStream);
+        });
+
+        $response->headers->set('Content-Type', $reference->getMimeType());
+        $disposition = HeaderUtils::makeDisposition(
+            HeaderUtils::DISPOSITION_ATTACHMENT,
+            $reference->getOriginalFilename()
+        );
+        $response->headers->set('Content-Disposition', $disposition);
+
+        return $response;
     }
 }
