@@ -10,6 +10,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints\File;
@@ -33,8 +34,6 @@ class ArticleReferenceAdminController extends BaseController
         /** @var UploadedFile $uploadedFile */
         $uploadedFile = $request->files->get('reference');
 
-        dump($uploadedFile);
-
         $violations = $validator->validate(
             $uploadedFile,
             [
@@ -55,13 +54,7 @@ class ArticleReferenceAdminController extends BaseController
         );
 
         if ($violations->count() > 0) {
-            /** @var ConstraintViolation $violation */
-            $violation = $violations[0];
-            $this->addFlash('error', $violation->getMessage());
-
-            return $this->redirectToRoute('admin_article_edit', [
-                'id' => $article->getId()
-            ]);
+            return $this->json($violations, 400);
         }
 
         $filename = $uploaderHelper->uploadArticleReference($uploadedFile);
@@ -74,9 +67,12 @@ class ArticleReferenceAdminController extends BaseController
         $entityManager->persist($articleReference);
         $entityManager->flush();
 
-        return $this->redirectToRoute('admin_article_edit', [
-            'id' => $article->getId()
-        ]);
+        return $this->json(
+            $articleReference,
+            Response::HTTP_CREATED,
+            [],
+            ['groups'=> ['main']]
+        );
     }
 
     /**

@@ -37,6 +37,13 @@ function initializeDropzone() {
     }
 
     var dropzone = new Dropzone(formElement, {
-        paramName: 'reference'
+        paramName: 'reference',
+        init: function() {
+            this.on('error', function(file, data) {
+               if (data.detail) {
+                   this.emit('error', file, data.detail)
+               }
+            });
+        }
     })
 }
