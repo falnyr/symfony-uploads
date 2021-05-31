@@ -2,12 +2,14 @@
 
 namespace App\Controller;
 
+use App\Api\ArticleReferenceUploadApiModel;
 use App\Entity\Article;
 use App\Entity\ArticleReference;
 use App\Service\UploaderHelper;
 use Aws\S3\S3Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
+use Symfony\Component\HttpFoundation\File\File as FoundationFile;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -32,10 +34,33 @@ class ArticleReferenceAdminController extends BaseController
         Request $request,
         UploaderHelper $uploaderHelper,
         EntityManagerInterface $entityManager,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        SerializerInterface $serializer
     ) {
-        /** @var UploadedFile $uploadedFile */
-        $uploadedFile = $request->files->get('reference');
+
+        if ($request->headers->get('Content-Type') === 'application/json') {
+            /** @var ArticleReferenceUploadApiModel $uploadApiModel */
+            $uploadApiModel = $serializer->deserialize(
+                $request->getContent(),
+                ArticleReferenceUploadApiModel::class,
+                'json'
+            );
+
+            $violations = $validator->validate($uploadApiModel);
+            if ($violations->count() > 0) {
+                return $this->json($violations, 400);
+            }
+
+            $tmpPath = sys_get_temp_dir().'/sf_upload'.uniqid();
+            file_put_contents($tmpPath, $uploadApiModel->getDecodedData());
+            $uploadedFile = new FoundationFile($tmpPath);
+            $originalName = $uploadApiModel->filename;
+        } else {
+            /** @var UploadedFile $uploadedFile */
+            $uploadedFile = $request->files->get('reference');
+            $originalName = $uploadedFile->getClientOriginalName();
+        }
+
 
         $violations = $validator->validate(
             $uploadedFile,
@@ -64,8 +89,12 @@ class ArticleReferenceAdminController extends BaseController
 
         $articleReference = new ArticleReference($article);
         $articleReference->setFilename($filename);
-        $articleReference->setOriginalFilename($uploadedFile->getClientOriginalName() ?? $filename);
+        $articleReference->setOriginalFilename($originalName ?? $filename);
         $articleReference->setMimeType($uploadedFile->getMimeType() ?? 'application/octet-stream');
+
+        if (is_file($uploadedFile->getPathname())) {
+            unlink($uploadedFile->getPathname());
+        }
 
         $entityManager->persist($articleReference);
         $entityManager->flush();
