@@ -118,6 +118,34 @@ class ArticleReferenceAdminController extends BaseController
     }
 
     /**
+     * @Route("/admin/article/{id}/references/reorder", methods={"POST"}, name="admin_article_reorder_references")
+     * @IsGranted("MANAGE", subject="article")
+     */
+    public function reorderArticleReferences(Article $article, Request $request, EntityManagerInterface $entityManager)
+    {
+        $orderedIds = json_decode($request->getContent(), true);
+        if ($orderedIds === false) {
+            return $this->json(['detail' => 'invalid body'], 400);
+        }
+
+        $orderedIds = array_flip($orderedIds);
+        foreach ($article->getArticleReferences() as $reference) {
+            $reference->setPosition($orderedIds[$reference->getId()]);
+        }
+
+        $entityManager->flush();
+
+        return $this->json(
+            $article->getArticleReferences(),
+            200,
+            [],
+            [
+                'groups' => ['main']
+            ]
+        );
+    }
+
+    /**
      * @Route("/admin/article/references/{id}", name="admin_article_delete_references", methods={"DELETE"})
      */
     public function deleteArticleReference(ArticleReference $reference, UploaderHelper $uploaderHelper, EntityManagerInterface $entityManager)
