@@ -35,10 +35,15 @@ class ReferenceList
 {
     constructor($element) {
         this.$element = $element;
+        this.sortable = Sortable.create(this.$element[0], {
+            handle: '.drag-handle',
+            animation: 150
+        });
         this.references = [];
         this.render();
 
         this.$element.on('click', '.js-reference-delete', event => this.handleReferenceDelete(event));
+        this.$element.on('blur', '.js-edit-filename', event => this.handleReferenceEditFilename(event));
 
         $.ajax({
             url: this.$element.data('url')
@@ -68,11 +73,26 @@ class ReferenceList
         })
     }
 
+    handleReferenceEditFilename(event) {
+        const $li = $(event.currentTarget).closest('.list-group-item');
+        const id = $li.data('id');
+        const reference = this.references.find(reference => reference.id === id)
+        reference.originalFilename = $(event.currentTarget).val();
+
+        $.ajax({
+            url: '/admin/article/references/'+id,
+            method: 'PUT',
+            data: JSON.stringify(reference)
+        })
+    }
+
     render() {
         const itemsHtml = this.references.map(reference => {
             return `
 <li class="list-group-item d-flex justify-content-between align-items-center" data-id="${reference.id}">
-    ${reference.originalFilename}
+    <span class="drag-handle fa fa-reorder"></span>
+    <input type="text" value="${reference.originalFilename}" class="form-control js-edit-filename" style="width:auto">
+    
     <span>
         <a href="/admin/article/references/${reference.id}/download" class="btn btn-link btn-sm"><span class="fa fa-download"></span></a>
         <button class="js-reference-delete btn btn-link btn-sm"><span class="fa fa-trash"></span></button>

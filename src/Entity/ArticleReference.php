@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Service\UploaderHelper;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ArticleReferenceRepository")
@@ -34,6 +35,8 @@ class ArticleReference
     /**
      * @ORM\Column(type="string", length=255)
      * @Groups({"main", "input"})
+     * @Assert\NotBlank()
+     * @Assert\Length(max=100)
      */
     private $originalFilename;
 
@@ -42,6 +45,11 @@ class ArticleReference
      * @Groups("main")
      */
     private $mimeType;
+
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $position = 0;
 
     public function __construct(Article $article)
     {
@@ -97,5 +105,17 @@ class ArticleReference
     public function getFilePath(): string
     {
         return UploaderHelper::ARTICLE_REFERENCE.'/'.$this->getFilename();
+    }
+
+    public function getPosition(): ?int
+    {
+        return $this->position;
+    }
+
+    public function setPosition(int $position): self
+    {
+        $this->position = $position;
+
+        return $this;
     }
 }
