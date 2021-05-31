@@ -1,16 +1,10 @@
 # Read the documentation: https://github.com/1up-lab/OneupFlysystemBundle/blob/release/3.x/Resources/doc/index.md
 oneup_flysystem:
     adapters:
-        public_uploads_adapter:
-            awss3v3:
-                client: Aws\S3\S3Client
-                bucket: '%env(AWS_S3_BUCKET)%'
-        private_uploads_adapter:
+        uploads_adapter:
             awss3v3:
                 client: Aws\S3\S3Client
                 bucket: '%env(AWS_S3_BUCKET)%'
     filesystems:
-        public_uploads_filesystem:
-            adapter: public_uploads_adapter
-        private_uploads_filesystem:
-            adapter: private_uploads_adapter
+        uploads_filesystem:
+            adapter: uploads_adapter

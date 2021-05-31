@@ -5,6 +5,7 @@ namespace App\Service;
 
 
 use Gedmo\Sluggable\Util\Urlizer;
+use League\Flysystem\AdapterInterface;
 use League\Flysystem\FileNotFoundException;
 use League\Flysystem\FilesystemInterface;
 use Psr\Log\LoggerInterface;
@@ -20,7 +21,7 @@ class UploaderHelper
     /**
      * @var FilesystemInterface
      */
-    private $publicFilesystem;
+    private $filesystem;
     /**
      * @var RequestStackContext
      */
@@ -33,24 +34,18 @@ class UploaderHelper
      * @var string
      */
     private $uploadedAssetsBaseUrl;
-    /**
-     * @var FilesystemInterface
-     */
-    private $privateFilesystem;
 
     public function __construct(
-        FilesystemInterface $publicUploadFilesystem,
-        FilesystemInterface $privateUploadFilesystem,
+        FilesystemInterface $uploadFilesystem,
         RequestStackContext $requestStackContext,
         LoggerInterface $logger,
         string $uploadedAssetsBaseUrl
     )
     {
-        $this->publicFilesystem = $publicUploadFilesystem;
+        $this->filesystem = $uploadFilesystem;
         $this->requestStackContext = $requestStackContext;
         $this->logger = $logger;
         $this->uploadedAssetsBaseUrl = $uploadedAssetsBaseUrl;
-        $this->privateFilesystem = $privateUploadFilesystem;
     }
 
     public function uploadArticleImage(File $file, ?string $existingFilename): string
@@ -59,7 +54,7 @@ class UploaderHelper
 
         if ($existingFilename) {
             try {
-                $result = $this->publicFilesystem->delete(self::ARTICLE_IMAGE.'/'.$existingFilename);
+                $result = $this->filesystem->delete(self::ARTICLE_IMAGE.'/'.$existingFilename);
 
                 if ($result === false) {
                     throw new \Exception(sprintf('Could not delete old uploaded file "%s"', $existingFilename));
@@ -102,10 +97,15 @@ class UploaderHelper
         }
 
         $newFilename = Urlizer::urlize(pathinfo($originalFilename, PATHINFO_FILENAME)) . '-' . uniqid() . '.' . $file->guessExtension();
-        $filesystem = $isPublic ? $this->publicFilesystem : $this->privateFilesystem;
 
         $stream = fopen($file->getPathname(), 'r');
-        $result = $filesystem->writeStream($directory . '/' . $newFilename, $stream);
+        $result = $this->filesystem->writeStream(
+            $directory . '/' . $newFilename,
+            $stream,
+            [
+                'visibility' => $isPublic ? AdapterInterface::VISIBILITY_PUBLIC : AdapterInterface::VISIBILITY_PRIVATE
+            ]
+        );
 
         if ($result === false) {
             throw new \Exception(sprintf('Could not write uploaded file "%s"', $newFilename));
@@ -121,11 +121,9 @@ class UploaderHelper
     /**
      * @return resource
      */
-    public function readStream(string $path, bool $isPublic)
+    public function readStream(string $path)
     {
-        $filesystem = $isPublic ? $this->publicFilesystem : $this->privateFilesystem;
-
-        $resource = $filesystem->readStream($path);
+        $resource = $this->filesystem->readStream($path);
 
         if ($resource === false) {
             throw new \Exception(sprinf('Error opening stream for "%s', $path));
@@ -135,11 +133,9 @@ class UploaderHelper
     }
 
 
-    public function deleteFile(string $path, bool $isPublic)
+    public function deleteFile(string $path)
     {
-        $filesystem = $isPublic ? $this->publicFilesystem : $this->privateFilesystem;
-
-        $result = $filesystem->delete($path);
+        $result = $this->filesystem->delete($path);
 
         if ($result === false) {
             throw new \Exception(sprintf('Error deleting "%s"', $path));
