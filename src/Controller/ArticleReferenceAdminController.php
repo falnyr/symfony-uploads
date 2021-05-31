@@ -115,4 +115,21 @@ class ArticleReferenceAdminController extends BaseController
             ]
         );
     }
+
+    /**
+     * @Route("/admin/article/references/{id}", name="admin_article_delete_references", methods={"DELETE"})
+     */
+    public function deleteArticleReference(ArticleReference $reference, UploaderHelper $uploaderHelper, EntityManagerInterface $entityManager)
+    {
+        $article = $reference->getArticle();
+        $this->denyAccessUnlessGranted('MANAGE', $article);
+
+
+        $entityManager->remove($reference);
+        $entityManager->flush();
+
+        $uploaderHelper->deleteFile($reference->getFilePath(), false);
+
+        return new Response(null, 204);
+    }
 }
