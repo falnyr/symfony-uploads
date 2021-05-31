@@ -16,18 +16,7 @@
         <div class="col-sm-4">
             <h3>References</h3>
 
-            <ul class="list-group small">
-                {% for reference in article.articleReferences %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ reference.originalFilename }}
-
-                        <span>
-                            <a href="{{ path('admin_article_download_reference', {
-                                id: reference.id
-                            }) }}"><span class="fa fa-download"></span></a>
-                        </span>
-                    </li>
-                {% endfor %}
+            <ul class="list-group small js-reference-list" data-url="{{ path('admin_article_list_references', {id: article.id}) }}">
             </ul>
 
             <hr>
