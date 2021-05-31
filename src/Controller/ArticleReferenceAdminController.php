@@ -5,10 +5,12 @@ namespace App\Controller;
 use App\Entity\Article;
 use App\Entity\ArticleReference;
 use App\Service\UploaderHelper;
+use Aws\S3\S3Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -79,26 +81,26 @@ class ArticleReferenceAdminController extends BaseController
     /**
      * @Route("/admin/article/references/{id}/download", name="admin_article_download_reference", methods={"GET"})
      */
-    public function downloadArticleReference(ArticleReference $reference, UploaderHelper $uploaderHelper)
+    public function downloadArticleReference(ArticleReference $reference, S3Client $s3Client, string $s3BucketName)
     {
         $article = $reference->getArticle();
         $this->denyAccessUnlessGranted('MANAGE', $article);
 
-        $response = new StreamedResponse(function () use($reference, $uploaderHelper) {
-            $outputStream = fopen('php://output', 'wb');
-            $fileStream = $uploaderHelper->readStream($reference->getFilePath());
+        $cmd = $s3Client->getCommand('GetObject', [
+            'Bucket' => $s3BucketName,
+            'Key' => $reference->getFilePath(),
+            'ResponseContentType' => $reference->getMimeType(),
+            'ResponseContentDisposition' => HeaderUtils::makeDisposition(
+                HeaderUtils::DISPOSITION_ATTACHMENT,
+                $reference->getOriginalFilename()
+            ),
+        ]);
+//        dd($cmd);
 
-            stream_copy_to_stream($fileStream, $outputStream);
-        });
+        $request = $s3Client->createPresignedRequest($cmd, '+30 minutes');
 
-        $response->headers->set('Content-Type', $reference->getMimeType());
-        $disposition = HeaderUtils::makeDisposition(
-            HeaderUtils::DISPOSITION_ATTACHMENT,
-            $reference->getOriginalFilename()
-        );
-        $response->headers->set('Content-Disposition', $disposition);
 
-        return $response;
+        return new RedirectResponse((string) $request->getUri());
     }
 
     /**
