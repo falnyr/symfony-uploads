@@ -6,8 +6,7 @@
 parameters:
     cache_adapter: cache.adapter.apcu
     locale: 'en'
-    uploads_dir_name: 'uploads'
-    uploads_base_url: '%env(SITE_BASE_URL)%/%uploads_dir_name%'
+    uploads_base_url: 'https://%env(AWS_S3_BUCKET)%.s3-ap-southeast-2.amazonaws.com'
 
 services:
     # default configuration for services in *this* file

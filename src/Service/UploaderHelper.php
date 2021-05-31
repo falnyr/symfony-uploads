@@ -80,6 +80,11 @@ class UploaderHelper
 
     public function getPublicPath(string $path): string
     {
+        $fullPath = $this->uploadedAssetsBaseUrl.'/'.$path;
+        if (strpos($fullPath, '://') !== false) {
+            return $fullPath;
+        }
+
         return $this->requestStackContext->getBasePath().$this->uploadedAssetsBaseUrl.'/'.$path;
     }
 
